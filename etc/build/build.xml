@@ -185,6 +185,7 @@
 			<sources dir="${war.dir}/js/diagramly">
 				<file name="DrawioFile.js" />
 				<file name="LocalFile.js" />
+				<file name="BackendFile.js" />
 				<file name="Editor.js" />
 				<file name="EditorUi.js" />
 				<file name="Pages.js" />
@@ -368,6 +369,7 @@
 			<sources dir="${war.dir}/js/diagramly">
 				<file name="DrawioFile.js" />
 				<file name="LocalFile.js" />
+				<file name="BackendFile.js" />
 				<file name="LocalLibrary.js" />
 				<file name="StorageFile.js" />
 				<file name="StorageLibrary.js" />
