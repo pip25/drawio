@@ -226,6 +226,11 @@ App.MODE_GITLAB = 'gitlab';
 App.MODE_DEVICE = 'device';
 
 /**
+ * Backend Mode
+ */
+App.MODE_BACKEND = 'backend';
+
+/**
  * Browser Mode
  */
 App.MODE_BROWSER = 'browser';
@@ -2876,9 +2881,7 @@ App.prototype.loadGapi = function(then)
  */
 App.prototype.load = function()
 {
-	// Checks if we're running in embedded mode
-	if (urlParams['embed'] != '1')
-	{
+
 		if (this.spinner.spin(document.body, mxResources.get('starting')))
 		{
 			try
@@ -2926,16 +2929,6 @@ App.prototype.load = function()
 				}
 			}
 		}
-	}
-	else
-	{
-		this.restoreLibraries();
-		
-		if (urlParams['gapi'] == '1')
-		{
-			this.loadGapi(function() {});
-		}
-	}
 };
 
 /**
@@ -5116,6 +5109,10 @@ App.prototype.loadFile = function(id, sameWindow, file, success, force)
 					success();
 				}
 			}
+			else if (id.charAt(0) == 'B') {
+				this.spinner.stop();
+				this.fileCreated(new BackendFile(id.substring(1), this, this.emptyDiagramXml, this.defaultFilename, false), null, null, null, null);
+			}
 			else if (id.charAt(0) == 'E') // Embed file
 			{
 				//Currently we only reload current file. Id is not used!
@@ -7046,7 +7043,7 @@ App.prototype.updateHeader = function()
 				mxEvent.consume(evt);
 			}));
 		
-			if (uiTheme != 'atlas')
+			if (uiTheme != 'atlas' && urlParams['embed'] != '1')
 			{
 				this.toolbarContainer.appendChild(this.toggleElement);
 			}

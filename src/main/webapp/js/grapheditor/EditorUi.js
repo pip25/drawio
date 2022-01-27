@@ -4332,7 +4332,9 @@ EditorUi.prototype.createUi = function()
 		this.menubar.container.appendChild(this.statusContainer);
 		
 		// Inserts into DOM
-		this.container.appendChild(this.menubarContainer);
+		if (urlParams['embed'] != '1') {
+			this.container.appendChild(this.menubarContainer);
+		}
 	}
 
 	// Creates the sidebar
@@ -5668,7 +5670,9 @@ EditorUi.prototype.createKeyHandler = function(editor)
 		keyHandler.bindAction(82, true, 'turn'); // Ctrl+R
 		keyHandler.bindAction(82, true, 'clearDefaultStyle', true); // Ctrl+Shift+R
 		keyHandler.bindAction(83, true, 'save'); // Ctrl+S
-		keyHandler.bindAction(83, true, 'saveAs', true); // Ctrl+Shift+S
+		if (urlParams['embed'] != '1') {
+			keyHandler.bindAction(83, true, 'saveAs', true); // Ctrl+Shift+S
+		}
 		keyHandler.bindAction(65, true, 'selectAll'); // Ctrl+A
 		keyHandler.bindAction(65, true, 'selectNone', true); // Ctrl+A
 		keyHandler.bindAction(73, true, 'selectVertices', true); // Ctrl+Shift+I
