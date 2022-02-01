@@ -5110,8 +5110,14 @@ App.prototype.loadFile = function(id, sameWindow, file, success, force)
 				}
 			}
 			else if (id.charAt(0) == 'B') {
+				const file = new BackendFile(id.substring(1), this, this.emptyDiagramXml);
 				this.spinner.stop();
-				this.fileCreated(new BackendFile(id.substring(1), this, this.emptyDiagramXml, this.defaultFilename, false), null, null, null, null);
+				this.fileLoaded(file, null, null, null, null);
+
+				if (success != null)
+				{
+					success();
+				}
 			}
 			else if (id.charAt(0) == 'E') // Embed file
 			{
