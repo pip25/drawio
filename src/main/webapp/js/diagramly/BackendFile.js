@@ -9,14 +9,24 @@
  * @param {number} x X-coordinate of the point.
  * @param {number} y Y-coordinate of the point.
  */
- BackendFile = function(idToken, ui, data, title, temp, fileHandle, desc)
+ BackendFile = function(idToken, ui, data)
  {
      DrawioFile.call(this, ui, data);
      
-     this.title = title;
-     this.mode = (temp) ? null : App.MODE_BACKEND;
-     this.fileHandle = fileHandle;
-     this.desc = desc;
+     const idx = idToken.indexOf('|');
+     this.token = idToken.substring(idx + 1);
+
+     const endpoint = idToken.substring(0, idx);
+     // Ensure the URI is absolute
+     this.endpoint =
+            !endpoint.startsWith('/') &&
+            !endpoint.startsWith('http:') &&
+            !endpoint.startsWith('https:')
+                ? `/${endpoint}`
+                : endpoint;
+
+     this.desc = null;
+     this.mode = App.MODE_BACKEND;
  };
  
  //Extends mxEventSource
@@ -30,7 +40,7 @@
   */
  BackendFile.prototype.isAutosave = function()
  {
-     return this.fileHandle != null && !this.invalidFileHandle && DrawioFile.prototype.isAutosave.apply(this, arguments);
+     return true;
  };
  
  /**
@@ -61,7 +71,7 @@
   */
  BackendFile.prototype.getTitle = function()
  {
-     return this.title;
+     return '';
  };
  
  /**
@@ -72,7 +82,7 @@
   */
  BackendFile.prototype.isRenamable = function()
  {
-     return true;
+     return false;
  };
  
  /**
@@ -83,7 +93,7 @@
   */
  BackendFile.prototype.save = function(revision, success, error)
  {
-     this.saveAs(this.title, success, error);
+     this.saveAs('', success, error);
  };
  
  /**
@@ -121,14 +131,7 @@
   */
  BackendFile.prototype.getLatestVersion = function(success, error)
  {
-     if (this.fileHandle == null)
-     {
-         success(null);
-     }
-     else
-     {
-         this.ui.loadFileSystemEntry(this.fileHandle, success, error);
-     }
+     this.getFromAPI(success, error);
  };
  
  /**
@@ -139,24 +142,14 @@
   */
  BackendFile.prototype.saveFile = function(title, revision, success, error, useCurrentData)
  {
-     if (title != this.title)
-     {
-         this.fileHandle = null;
-         this.desc = null;
-     }
-     
-     this.title = title;
- 
      // Updates data after changing file name
      if (!useCurrentData)
      {
          this.updateFileData();
      }
      
-     var binary = this.ui.useCanvasForExport && /(\.png)$/i.test(this.getTitle());
      this.setShadowModified(false);
-     var savedData = this.getData();
-     
+
      var done = mxUtils.bind(this, function()
      {
          this.setModified(this.getShadowModified());
@@ -167,124 +160,10 @@
              success();
          }
      });
-     
-     var doSave = mxUtils.bind(this, function(data)
-     {
-         if (this.fileHandle != null)
-         {
-             // Sets shadow modified state during save
-             if (!this.savingFile)
-             {
-                 this.savingFileTime = new Date();
-                 this.savingFile = true;
-                 
-                 var errorWrapper = mxUtils.bind(this, function(e)
-                 {
-                     this.savingFile = false;
-                     
-                     if (error != null)
-                     {
-                         // Wraps error object to offer save status option
-                         error({error: e});
-                     }
-                 });
-                 
-                 // Saves a copy as a draft while saving
-                 this.saveDraft();
-                 
-                 this.fileHandle.createWritable().then(mxUtils.bind(this, function(writable)
-                 {
-                     this.fileHandle.getFile().then(mxUtils.bind(this, function(newDesc)
-                     {
-                         this.invalidFileHandle = null;
-                         
-                         if (this.desc.lastModified == newDesc.lastModified)
-                         {
-                             writable.write((binary) ? this.ui.base64ToBlob(data, 'image/png') : data).then(mxUtils.bind(this, function()
-                             {
-                                 writable.close().then(mxUtils.bind(this, function()
-                                 {
-                                     this.fileHandle.getFile().then(mxUtils.bind(this, function(desc)
-                                     {
-                                         try
-                                         {
-                                             var lastDesc = this.desc;
-                                             this.savingFile = false;
-                                             this.desc = desc;
-                                             this.fileSaved(savedData, lastDesc, done, errorWrapper);
-                                             
-                                             // Deletes draft after saving
-                                             this.removeDraft();
-                                         }
-                                         catch (e)
-                                         {
-                                             errorWrapper(e);
-                                         }
-                                     }), errorWrapper);
-                                 }), errorWrapper);
-                             }), errorWrapper);
-                         }
-                         else
-                         {
-                             this.inConflictState = true;
-                             errorWrapper();
-                         }
-                     }), mxUtils.bind(this, function(e)
-                     {
-                         this.invalidFileHandle = true;
-                         errorWrapper(e);
-                     }));
-                 }), errorWrapper);
-             }
-         }
-         else
-         {
-             if (this.ui.isOfflineApp() || this.ui.isLocalFileSave())
-             {
-                 this.ui.doSaveLocalFile(data, title, (binary) ?
-                     'image/png' : 'text/xml', binary);
-             }
-             else
-             {
-                 if (data.length < MAX_REQUEST_SIZE)
-                 {
-                     var dot = title.lastIndexOf('.');
-                     var format = (dot > 0) ? title.substring(dot + 1) : 'xml';
-     
-                     // Do not update modified flag
-                     new mxXmlRequest(SAVE_URL, 'format=' + format +
-                         '&xml=' + encodeURIComponent(data) +
-                         '&filename=' + encodeURIComponent(title) +
-                         ((binary) ? '&binary=1' : '')).
-                         simulate(document, '_blank');
-                 }
-                 else
-                 {
-                     this.ui.handleError({message: mxResources.get('drawingTooLarge')}, mxResources.get('error'), mxUtils.bind(this, function()
-                     {
-                         mxUtils.popup(data);
-                     }));
-                 }
-             }
-             
-             done();
-         }
-     });
-     
-     if (binary)
-     {
-         var p = this.ui.getPngFileProperties(this.ui.fileNode);
- 
-         this.ui.getEmbeddedPng(mxUtils.bind(this, function(imageData)
-         {
-             doSave(imageData);
-         }), error, (this.ui.getCurrentFile() != this) ?
-             savedData : null, p.scale, p.border);
-     }
-     else
-     {
-         doSave(savedData);
-     }
+
+     this.postToAPI(this.getData(), (savedData) => {
+        this.fileSaved(savedData, this.desc, done, error);
+     }, error);
  };
  
  /**
@@ -295,12 +174,9 @@
   */
  BackendFile.prototype.rename = function(title, success, error)
  {
-     this.title = title;
-     this.descriptorChanged();
-     
-     if (success != null)
+     if (error != null)
      {
-         success();
+         error({e: new Error('Rename is not supported')});
      }
  };
  
@@ -310,7 +186,37 @@
   */
  BackendFile.prototype.open = function()
  {
-     this.ui.setFileData(this.getData());
-     this.installListeners();
+    this.getFromAPI((resp) => {
+        this.setData(resp);
+        this.ui.setFileData(resp);
+        this.installListeners();
+        DrawioFile.SYNC = 'auto';
+        this.startSync();
+    }, (e) => {
+        this.ui.handleError(e, mxResources.get('errorLoadingFile'));
+    });
+ };
+
+ BackendFile.prototype.getFromAPI = function(success, error)
+ {
+    const opts = {
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + this.token
+        }
+    };
+
+    axios.get(this.endpoint, opts).then((resp) => success(resp.data.xml), error);
  };
  
+ BackendFile.prototype.postToAPI = function(xml, success, error)
+ {
+    const opts = {
+        headers: {
+            'Authorization': 'Bearer ' + this.token,
+            'Content-Type': 'application/json'
+        }
+    };
+
+    axios.patch(this.endpoint, { xml }, opts).then((resp) => success(resp.data.xml), error);
+ };
