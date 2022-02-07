@@ -206,7 +206,7 @@
         }
     };
 
-    axios.get(this.endpoint, opts).then((resp) => success(resp.data.xml), error);
+    axios.get(this.endpoint, opts).then((resp) => success(resp.data.xml ? resp.data.xml : this.ui.emptyDiagramXml), error);
  };
  
  BackendFile.prototype.postToAPI = function(xml, success, error)
