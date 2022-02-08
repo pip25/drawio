@@ -9,7 +9,7 @@
  * @param {number} x X-coordinate of the point.
  * @param {number} y Y-coordinate of the point.
  */
- BackendFile = function(idToken, ui, data)
+ BackendFile = function(idToken, ui, data, pollInterval)
  {
      DrawioFile.call(this, ui, data);
      
@@ -24,6 +24,16 @@
             !endpoint.startsWith('https:')
                 ? `/${endpoint}`
                 : endpoint;
+
+     if (pollInterval > 0) {
+        this.pollIntervalId = setInterval(() => this.poll(), pollInterval);
+        window.addEventListener('unload', () => {
+            this.stopPoll();
+            if (this.ui.editor.modified) {
+                this.save();
+            }
+        });
+     }
 
      this.desc = null;
      this.mode = App.MODE_BACKEND;
@@ -179,6 +189,16 @@
          error({e: new Error('Rename is not supported')});
      }
  };
+
+ BackendFile.prototype.poll = function()
+ {
+     this.getFromAPI((resp) => {
+        this.setData(resp);
+        this.ui.setFileData(resp);
+     }, (e) => {
+        this.ui.handleError(e, mxResources.get('errorLoadingFile'));
+     })
+ }
  
  /**
   * Returns the location as a new object.
@@ -196,6 +216,18 @@
         this.ui.handleError(e, mxResources.get('errorLoadingFile'));
     });
  };
+
+ BackendFile.prototype.stopPoll = function() {
+     if (this.pollIntervalId > 0) {
+         clearInterval(this.pollIntervalId);
+         this.pollIntervalId = -1;
+     }
+ }
+
+ BackendFile.prototype.destroy = function() {
+     this.stopPoll();
+     DrawioFile.prototype.destroy.call(this);
+ }
 
  BackendFile.prototype.getFromAPI = function(success, error)
  {

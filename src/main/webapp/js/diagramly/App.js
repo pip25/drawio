@@ -5110,7 +5110,7 @@ App.prototype.loadFile = function(id, sameWindow, file, success, force)
 				}
 			}
 			else if (id.charAt(0) == 'B') {
-				const file = new BackendFile(id.substring(1), this, this.emptyDiagramXml);
+				const file = new BackendFile(id.substring(1), this, this.emptyDiagramXml, urlParams['poll']);
 				this.spinner.stop();
 				this.fileLoaded(file, null, null, null, null);
 
