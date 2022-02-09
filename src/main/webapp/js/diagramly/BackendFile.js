@@ -143,6 +143,11 @@
  {
      this.getFromAPI(success, error);
  };
+
+ BackendFile.prototype.extractFromXml = function(xml) {
+     const doc = mxUtils.parseXml(xml);
+     return doc.getElementsByTagName("mxfile")[0].getElementsByTagName("diagram")[0].innerHTML;
+ }
  
  /**
   * Translates this point by the given vector.
@@ -171,7 +176,12 @@
          }
      });
 
+     if (this.extractFromXml(this.getData()) === this.extractFromXml(this.lastSavedData)) {
+         return;
+     }
+
      this.postToAPI(this.getData(), (savedData) => {
+        this.lastSavedData = savedData;
         this.fileSaved(savedData, this.desc, done, error);
      }, error);
  };
@@ -193,8 +203,11 @@
  BackendFile.prototype.poll = function()
  {
      this.getFromAPI((resp) => {
-        this.setData(resp);
-        this.ui.setFileData(resp);
+         if (this.lastSavedData !== resp) {
+             this.setData(resp);
+             this.ui.setFileData(resp);
+             this.lastSavedData = resp;
+         }
      }, (e) => {
         this.ui.handleError(e, mxResources.get('errorLoadingFile'));
      })
