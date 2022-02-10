@@ -146,7 +146,15 @@
 
  BackendFile.prototype.extractFromXml = function(xml) {
      const doc = mxUtils.parseXml(xml);
-     return doc.getElementsByTagName("mxfile")[0].getElementsByTagName("diagram")[0].innerHTML;
+     const mxFileTags = doc.getElementsByTagName("mxfile");
+     if (!mxFileTags.length) {
+         return xml;
+     }
+     const diagramTags = mxFileTags[0].getElementsByTagName("diagram");
+     if (!diagramTags.length) {
+         return xml;
+     }
+     return diagramTags[0].innerHTML;
  }
  
  /**
@@ -176,12 +184,7 @@
          }
      });
 
-     if (this.extractFromXml(this.getData()) === this.extractFromXml(this.lastSavedData)) {
-         return;
-     }
-
      this.postToAPI(this.getData(), (savedData) => {
-        this.lastSavedData = savedData;
         this.fileSaved(savedData, this.desc, done, error);
      }, error);
  };
@@ -203,10 +206,12 @@
  BackendFile.prototype.poll = function()
  {
      this.getFromAPI((resp) => {
-         if (this.lastSavedData !== resp) {
+         const data = this.extractFromXml(resp);
+         if (this.extractFromXml(this.getData()) !== data) {
+             this.removeListeners();
              this.setData(resp);
              this.ui.setFileData(resp);
-             this.lastSavedData = resp;
+             this.installListeners();
          }
      }, (e) => {
         this.ui.handleError(e, mxResources.get('errorLoadingFile'));
