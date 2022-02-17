@@ -227,6 +227,7 @@
     this.getFromAPI((resp) => {
         this.setData(resp);
         this.ui.setFileData(resp);
+        this.ui.editor.undoManager.clear();
         this.installListeners();
         DrawioFile.SYNC = 'auto';
         this.startSync();
